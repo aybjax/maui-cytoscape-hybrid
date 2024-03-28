@@ -1,9 +1,12 @@
-﻿namespace Visualizer8;
+﻿using Visualizer8.ViewModel;
+
+namespace Visualizer8;
 
 public partial class MainPage : ContentPage
 {
-    public MainPage()
+    public MainPage(GraphModelView mw)
     {
         InitializeComponent();
+        BindingContext = mw;
     }
 }

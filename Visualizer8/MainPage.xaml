@@ -1,14 +1,30 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:local="clr-namespace:Visualizer8"
+             xmlns:pages="clr-namespace:Visualizer8.Components.Pages"
+             xmlns:mv="clr-namespace:Visualizer8.ViewModel"
              x:Class="Visualizer8.MainPage"
-             BackgroundColor="{DynamicResource PageBackgroundColor}">
-
-    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
-        <BlazorWebView.RootComponents>
-            <RootComponent Selector="#app" ComponentType="{x:Type local:Components.Routes}" />
-        </BlazorWebView.RootComponents>
-    </BlazorWebView>
-
+             x:DataType="mv:GraphModelView"
+             BackgroundColor="{DynamicResource PageBackgroundColor}"
+>
+    <Grid
+        RowDefinitions="Auto,1*"
+        ColumnDefinitions="1*,1*,1*,1*,1*,1*,1*,1*,1*,1*,1*,1*"
+    >
+        <Button Command="{Binding PickAndShowCommand}"
+                Text="Upload"
+                Grid.Row="0"
+                Grid.Column="0"
+        />
+        <Button Command="{Binding PickAndSaveCommand}"
+                Text="Save"
+                Grid.Row="0"
+                Grid.Column="11"
+        />
+        <BlazorWebView Grid.Row="1" Grid.ColumnSpan="12" x:Name="graphView" HostPage="wwwroot/index.html">
+            <BlazorWebView.RootComponents>
+                <RootComponent Selector="#app" ComponentType="{x:Type pages:Graph}" />
+            </BlazorWebView.RootComponents>
+        </BlazorWebView>
+    </Grid>
 </ContentPage>

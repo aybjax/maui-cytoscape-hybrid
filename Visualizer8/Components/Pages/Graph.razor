@@ -1,0 +1,108 @@
+﻿@page "/"
+@inject IJSRuntime Js
+@inject GraphService _graphSvc
+@inject IServiceProvider di
+@using Visualizer8.Services
+@using Visualizer8.Models.GraphDataPrimitives
+@implements IDisposable
+
+<div id="graph"></div>
+
+@code {
+    DotNetObjectReference<JsService>? dotnet;
+    
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        
+        _graphSvc.OnDataInitialized += OnGraph_OnDataInitializedListener;
+        _graphSvc.OnMicrotopicAdditionEvaluatedEvent += OnMicrotopicAdditionEvaluated;
+        _graphSvc.OnMicrotopicDeletionEvaluatedEvent += OnMicrotopicDeletionEvaluated;
+        _graphSvc.OnEdgeAdditionEvaluatedEvent += OnEdgeAdditionEvaluated;
+        _graphSvc.OnEdgeDeletionEvaluatedEvent += OnEdgeDeletionEvaluated;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstTime)
+    {
+        base.OnAfterRenderAsync(firstTime);
+        
+        if (firstTime)
+        {
+            var ins = di.GetService<JsService>() ?? throw new Exception("not initialized");
+            dotnet = DotNetObjectReference.Create(ins);
+            await Js.InvokeVoidAsync("initDotnet", dotnet);
+        }
+    }
+
+    public void Dispose()
+    {
+        _graphSvc.OnDataInitialized -= OnGraph_OnDataInitializedListener;
+        dotnet?.Dispose();
+    }
+
+    void OnGraph_OnDataInitializedListener(object? sender, EventArgs args)
+    {
+        var json = _graphSvc.GetCytoscapeData();
+        Js.InvokeVoidAsync("createCytoscape", json);
+    }
+
+    async Task AddMicrotopic(GraphId id, GraphName name, string color)
+    {
+        await Js.InvokeVoidAsync("addMicrotopic", id.Value, name.Value, color);
+    }
+
+    async Task DeleteMicrotopic(GraphId id, IEnumerable<GraphId> edgeIds)
+    {
+        await Js.InvokeVoidAsync("deleteMicrotopic", id.Value, edgeIds.Select(e => e.Value));
+    }
+
+    async Task AddEdge(GraphId id, GraphSource sourceId, GraphTarget targetId)
+    {
+        await Js.InvokeVoidAsync("addEdge", id.Value, sourceId.Value, targetId.Value);
+    }
+
+    async Task DeleteEdge(GraphId id)
+    {
+        await Js.InvokeVoidAsync("deleteEdge", id.Value);
+    }
+
+    async Task OnMicrotopicAdditionEvaluated(object? sender, GraphService.OnMicrotopicAdditionEvaluatedArg arg)
+    {
+        if (arg.Id is null || arg.Name is null || arg.Color is null)
+        {
+            return;
+        }
+
+        await AddMicrotopic(arg.Id, arg.Name, arg.Color);
+    }
+
+    async Task OnMicrotopicDeletionEvaluated(object? sender, GraphService.OnMicrotopicDeletionEvaluatedArg arg)
+    {
+        if (arg.Id is null)
+        {
+            return;
+        }
+
+        await DeleteMicrotopic(arg.Id, arg.EdgeIds ?? Enumerable.Empty<GraphId>());
+    }
+
+    async Task OnEdgeAdditionEvaluated(object? sender, GraphService.OnEdgeAdditionEvaluatedArg arg)
+    {
+        if (arg.Id is null || arg.SourceId is null || arg.TargetId is null)
+        {
+            return;
+        }
+
+        await AddEdge(arg.Id, arg.SourceId, arg.TargetId);
+    }
+
+    async Task OnEdgeDeletionEvaluated(object? sender, GraphService.OnEdgeDeletionEvaluatedArg arg)
+    {
+        if (arg.Id is null)
+        {
+            return;
+        }
+
+        await DeleteEdge(arg.Id);
+    }
+}
