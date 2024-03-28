@@ -6,13 +6,16 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <Identity Name="maui-package-name-placeholder" Publisher="CN=User Name" Version="0.0.0.0" />
+  <Identity Name="com.aybjax.beyim.visualizer" Publisher="CN=com.aybjax.beyim" Version="1.0.0.2" />
+  <!--1446366FF66B4915DA7309CACE450B205DE600A4-->
+  <!--& 'C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe' .\Visualizer8\Visualizer8.csproj /restore /t:Publish /p:TargetFramework=net8.0-windows10.0.19041.0 /p:configuration=release /p:GenerateAppxPackageOnBuild=true /p:Platform=x64 /p:AppxPackageSigningEnabled=true /p:PackageCertificateThumbprint="1446366FF66B4915DA7309CACE450B205DE600A4"-->
+
 
   <mp:PhoneIdentity PhoneProductId="C757800F-2D11-4636-B14B-CD47A5DA2DE4" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>$placeholder$</DisplayName>
-    <PublisherDisplayName>User Name</PublisherDisplayName>
+    <PublisherDisplayName>Aybjax Beyim</PublisherDisplayName>
     <Logo>$placeholder$.png</Logo>
   </Properties>
 
