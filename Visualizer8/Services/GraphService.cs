@@ -503,8 +503,9 @@ public class GraphService
                     Parent = m.Parent?.Value,
                     ParentName = m.Parent != null
                         ? _raw.Topics.FirstOrDefault(t => t.Id == m.Parent)?.Name.Value
-                        : null
-                }
+                        : null,
+                },
+                Position = m.Position,
             };
         }) ?? Enumerable.Empty<CytoscapeInput>());
         graphEls.AddRange(Raw?.Edges.Select(e =>
@@ -518,6 +519,7 @@ public class GraphService
             return new CytoscapeInput()
             {
                 Data = data,
+                Position = null,
             };
         }) ?? Enumerable.Empty<CytoscapeInput>());
 

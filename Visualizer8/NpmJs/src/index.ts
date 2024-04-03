@@ -93,10 +93,11 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
             window.cy?.destroy();
         }catch{}
     }
+    let parsedData: cytoscape.ElementDefinition[] = JSON.parse(data)
     window.cy = cytoscape({
         container: document.getElementById('graph'),
 
-        elements: JSON.parse(data),
+        elements: parsedData,
 
         layout: {
             //@ts-ignore
@@ -202,14 +203,23 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
         ]
     })
 
-    window.cy.forceRender()
+    // window.cy.forceRender()
+    if(parsedData.some(el => !!el.position))
+    {
+        parsedData = JSON.parse(data)
+        parsedData.forEach(el => {
+            if(el.position?.x !== null && el.position?.x !== void 0 && el.position?.y !== null && el.position?.y !== void 0)
+            {
+                console.log(el.position)
+                window.cy.$(`#${el.data.id}`)
+                    .position({
+                        x: el.position!.x,
+                        y: el.position!.y,
+                    })
+            }
+        })
+    }
     
-    window.cy.nodes().forEach(node => {
-        const position = node.position();
-        // @ts-ignore
-        window.dotnet.invokeMethodAsync('UpdateNodePositionById', node.data('id'), position.x, position.y);
-    })
-
     return window.cy;
 }
 

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using Visualizer8.Models.GraphData;
 
 namespace Visualizer8.Models;
 
@@ -45,4 +46,6 @@ public sealed record CytoscapeInput
 {
     [JsonPropertyName("data")]
     public required CytoscapeData Data { get; init; }
+    [JsonPropertyName("position")]
+    public required Position? Position { get; init; }
 }

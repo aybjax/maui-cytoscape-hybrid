@@ -59,4 +59,10 @@ public sealed record Node(
 public sealed record Position(
     float X,
     float Y
-);
+)
+{
+    [JsonPropertyName("x")]
+    public float X { get; init; } = X;
+    [JsonPropertyName("y")]
+    public float Y { get; init; } = Y;
+}
