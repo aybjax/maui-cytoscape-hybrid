@@ -4,7 +4,12 @@ import cxtmenu from 'cytoscape-cxtmenu';
 import cytoscapePopper from 'cytoscape-popper';
 import { createPopper } from '@popperjs/core';
 interface Dotnet {
-    invokeMethodAsync(fnx: 'AddMicrotopic'|'DeleteMicrotopicById'|'AddEdgeBySourceTarget'|'DeleteEdgeById',
+    invokeMethodAsync(fnx: 'AddMicrotopic'|
+                          'UpdateMicrotopicById'|
+                          'DeleteMicrotopicById'|
+                          'AddEdgeBySourceTarget'|
+                          'DeleteEdgeById'|
+                          'UpdateNodePositionById',
                       ...params: string[]): Promise<any>;
     dispose():void;
 }
@@ -15,7 +20,8 @@ declare global {
         dotnet: Dotnet;
         initDotnet: (dotnet: Dotnet) => void;
         disposeDotnet: () => void;
-        addMicrotopic: (id: string, name: string, color: string) => void;
+        addMicrotopic: (id: string, name: string, parentName: string, color: string) => void;
+        updateMicrotopic: (id: string, name: string, parentName: string, color: string) => void;
         deleteMicrotopic: (nodeId: string, edgeIds: string[]) => void;
         addEdge: (id: string, source: string, target: string) => void;
         deleteEdge: (id: string) => void;
@@ -27,12 +33,13 @@ window.initDotnet = (dotnet:  Dotnet) => {
 window.disposeDotnet = () => {
     window.dotnet?.dispose();
 }
-window.addMicrotopic = (id: string, name: string, color: string) => {
+window.addMicrotopic = (id: string, name: string, parentName: string, color: string) => {
     window.cy.one('tap', (e) => {
         window.cy.add({
             data: {
                 id: id,
                 name: name,
+                parent_name: parentName,
                 bg:  color,
                 group: 'microtopics',
                 selectable: true,
@@ -43,6 +50,12 @@ window.addMicrotopic = (id: string, name: string, color: string) => {
         window.cy.$(`#${id}`).on('dbltap', nodeDbTap);
         window.cy.$(`#${id}`).on('mouseover', nodeMouseOver);
     })
+}
+window.updateMicrotopic = (id: string, name: string, parentName: string, color: string) => {
+    window.cy.$(`#${id}`)
+        .data('name', name)
+        .data('parent_name', parentName)
+        .data('bg', color);
 }
 window.deleteMicrotopic = (nodeId: string, edgeIds: string[]) => {
     edgeIds.forEach(edgeId => {
@@ -175,15 +188,27 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
         outsideMenuCancel: 10,
         commands: [
             {
-                content: 'remove mctp',
+                content: 'delete',
                 select: async function(node){
                     await window.dotnet.invokeMethodAsync('DeleteMicrotopicById', node.data('id'));
+                }
+            },
+            {
+                content: 'update',
+                select: async function(node){
+                    await window.dotnet.invokeMethodAsync('UpdateMicrotopicById', node.data('id'));
                 }
             },
         ]
     })
 
     window.cy.forceRender()
+    
+    window.cy.nodes().forEach(node => {
+        const position = node.position();
+        // @ts-ignore
+        window.dotnet.invokeMethodAsync('UpdateNodePositionById', node.data('id'), position.x, position.y);
+    })
 
     return window.cy;
 }

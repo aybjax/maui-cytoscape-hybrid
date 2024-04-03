@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Mopups.Pages;
+using Visualizer8.Models.GraphDataPrimitives;
 using Visualizer8.Models.Input;
 using Visualizer8.ViewModel;
 
@@ -17,6 +18,11 @@ public partial class AddMicrotopicsPopups: PopupPage
         _mv = mv;
         InitializeComponent();
         BindingContext = _mv;
+    }
+
+    public void SetMicrotopicId(GraphId id)
+    {
+        _mv.Id = id;
     }
 
     TaskCompletionSource<NewMicrotopic?>? _taskCompletionSource;

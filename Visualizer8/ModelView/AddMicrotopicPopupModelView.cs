@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mopups.Services;
+using Visualizer8.Models.GraphDataPrimitives;
 using Visualizer8.Models.Input;
 using Visualizer8.Services;
 
@@ -9,6 +10,38 @@ namespace Visualizer8.ViewModel;
 
 public partial class AddMicrotopicPopupModelView: ObservableObject
 {
+    private GraphId? _id = null;
+
+    public GraphId? Id
+    {
+        get => _id;
+        set
+        {
+            if (value is null) return;
+            _id = value;
+
+            var mc = _graphService.Raw.Microtopics.First(el => value == el.Id);
+
+            MicrotopicName = mc.Name;
+
+            if (mc.Parent is null) return;
+
+            var topic = _graphService.Raw.Topics.First(t => t.Id == mc.Parent);
+
+            if (topic.Parent is null)
+            {
+                Application.Current?.MainPage?.DisplayAlert("topic parent is null",
+                    $"tell Aybjax that {topic.Id.Value} topics' parent is null", "OK");
+                return;
+            }
+
+            var unit = _graphService.Raw.Units.First(u => u.Id == topic.Parent);
+
+            SelectedUnit = new ComboItem(unit.Id, unit.Name, null);
+            SelectedTopic = new ComboItem(topic.Id, topic.Name, null);
+        }
+    }
+    
     private readonly GraphService _graphService;
     public ObservableCollection<ComboItem> Units { get; set;}
     public ObservableCollection<ComboItem> Topics { get; set; } = new();
@@ -58,7 +91,8 @@ public partial class AddMicrotopicPopupModelView: ObservableObject
             return;
         }
 
-        Microtopic = new NewMicrotopic(Guid.NewGuid(), MicrotopicName, SelectedTopic.Id);
+        GraphId id = Id ?? Guid.NewGuid();
+        Microtopic = new NewMicrotopic(id, MicrotopicName, SelectedTopic.Id);
         MopupService.Instance.PopAsync();
     }
 }

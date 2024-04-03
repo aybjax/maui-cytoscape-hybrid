@@ -38,7 +38,8 @@ public sealed record Edge(
 public sealed record Node(
     GraphId Id,
     GraphName Name,
-    GraphId? Parent = null
+    GraphId? Parent = null,
+    Position? Position = null
 ) : GraphElement
 {
     public override GraphType GetType()
@@ -54,3 +55,8 @@ public sealed record Node(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public GraphId? Parent { get; init; } = Parent;
 }
+
+public sealed record Position(
+    float X,
+    float Y
+);

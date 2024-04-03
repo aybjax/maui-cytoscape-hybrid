@@ -17,6 +17,7 @@
         
         _graphSvc.OnDataInitialized += OnGraph_OnDataInitializedListener;
         _graphSvc.OnMicrotopicAdditionEvaluatedEvent += OnMicrotopicAdditionEvaluated;
+        _graphSvc.OnMicrotopicUpdateEvaluatedEvent += OnMicrotopicUpdateEvaluated;
         _graphSvc.OnMicrotopicDeletionEvaluatedEvent += OnMicrotopicDeletionEvaluated;
         _graphSvc.OnEdgeAdditionEvaluatedEvent += OnEdgeAdditionEvaluated;
         _graphSvc.OnEdgeDeletionEvaluatedEvent += OnEdgeDeletionEvaluated;
@@ -46,9 +47,14 @@
         Js.InvokeVoidAsync("createCytoscape", json);
     }
 
-    async Task AddMicrotopic(GraphId id, GraphName name, string color)
+    async Task AddMicrotopic(GraphId id, GraphName name, GraphName parentName, string color)
     {
-        await Js.InvokeVoidAsync("addMicrotopic", id.Value, name.Value, color);
+        await Js.InvokeVoidAsync("addMicrotopic", id.Value, name.Value, parentName.Value, color);
+    }
+    
+    async Task UpdateMicrotopic(GraphId id, GraphName name, GraphName parentName, string color)
+    {
+        await Js.InvokeVoidAsync("updateMicrotopic", id.Value, name.Value, parentName.Value, color);
     }
 
     async Task DeleteMicrotopic(GraphId id, IEnumerable<GraphId> edgeIds)
@@ -73,8 +79,20 @@
             return;
         }
 
-        await AddMicrotopic(arg.Id, arg.Name, arg.Color);
+        await AddMicrotopic(arg.Id, arg.Name, arg.ParentName ?? "", arg.Color);
     }
+
+    async Task OnMicrotopicUpdateEvaluated(object? sender, GraphService.OnMicrotopicUpdateEvaluatedArg arg)
+    {
+        if (arg.Id is null || arg.Name is null || arg.Color is null)
+        {
+            return;
+        }
+
+        await UpdateMicrotopic(arg.Id, arg.Name, arg.ParentName ?? "", arg.Color);
+    }
+    
+    
 
     async Task OnMicrotopicDeletionEvaluated(object? sender, GraphService.OnMicrotopicDeletionEvaluatedArg arg)
     {

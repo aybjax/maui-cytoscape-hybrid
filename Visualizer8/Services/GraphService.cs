@@ -19,17 +19,34 @@ public class GraphService
     {
         public required GraphId? Id { get; init; }
         public required GraphName? Name { get; init; }
+        public required GraphName? ParentName { get; init; }
         public required string? Color { get; init; }
 
         public static OnMicrotopicAdditionEvaluatedArg Empty => new()
         {
             Id = null,
             Name = null,
+            ParentName = null,
             Color = null,
         };
     }
 
+    public class OnMicrotopicUpdateEvaluatedArg: EventArgs
+    {
+        public required GraphId? Id { get; init; }
+        public required GraphName? Name { get; init; }
+        public required GraphName? ParentName { get; init; }
+        public required string? Color { get; init; }
 
+        public static OnMicrotopicUpdateEvaluatedArg Empty => new()
+        {
+            Id = null,
+            Name = null,
+            ParentName = null,
+            Color = null,
+        };
+    }
+    
     public class OnMicrotopicDeletionEvaluatedArg: EventArgs
     {
         public required GraphId? Id { get; init; }
@@ -73,6 +90,8 @@ public class GraphService
     public event EventHandler? OnDataInitialized;
 
     public event AsyncEventHandler<OnMicrotopicAdditionEvaluatedArg>? OnMicrotopicAdditionEvaluatedEvent;
+
+    public event AsyncEventHandler<OnMicrotopicUpdateEvaluatedArg>? OnMicrotopicUpdateEvaluatedEvent;
     
     public event AsyncEventHandler<OnMicrotopicDeletionEvaluatedArg>? OnMicrotopicDeletionEvaluatedEvent;
     
@@ -117,6 +136,55 @@ public class GraphService
         {
             Id = microtopic.Id,
             Name = microtopic.Name,
+            ParentName = parent.Value.Name,
+            Color = color,
+        });
+    }
+
+    public async Task OnMicrotopicUpdated(object? sender, JsService.OnMicrotopicUpdatedArg arg)
+    {
+        var newMicrotopic = await GetTopicId(arg.Id);
+
+        if (newMicrotopic is null)
+        {
+            return;
+        }
+
+        var microtopic = new Node(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.ParentId);
+        var oldMicrotopic = _raw.Microtopics.First(m => m.Id == newMicrotopic.Id);
+        
+        _raw.Microtopics.RemoveWhere(m => m.Id == newMicrotopic.Id); // TODO test
+        _raw.Microtopics.Add(microtopic);
+
+        var oldParent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .FirstOrDefault(t => t.Value.Id == oldMicrotopic.Parent);
+        if (oldParent is null)
+        {
+            oldParent = Unit.SpareTopics.FirstOrDefault(t => t.Value.Id == oldMicrotopic.Parent);
+        }
+        oldParent?.Microtopics.RemoveWhere(m => m.Id == oldMicrotopic.Id);
+
+        var newParent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .FirstOrDefault(t => t.Value.Id == microtopic.Parent);
+        if (newParent is null)
+        {
+            newParent = Unit.SpareTopics.FirstOrDefault(t => t.Value.Id == microtopic.Parent);
+        }
+        newParent?.Microtopics.Add(microtopic);
+        
+        
+        if (!_mcColor.TryGetValue(microtopic.Parent ?? "none", out string? color))
+        {
+            color = _mcColorSpare.FirstOrDefault() ?? "#000";
+            _mcColorSpare.Remove(color);
+            _mcColor[microtopic.Parent?? "none"] = color;
+        }
+        
+        OnMicrotopicUpdateEvaluatedEvent?.Invoke(this, new OnMicrotopicUpdateEvaluatedArg()
+        {
+            Id = microtopic.Id,
+            Name = microtopic.Name,
+            ParentName = newParent.Value.Name,
             Color = color,
         });
     }
@@ -236,6 +304,27 @@ public class GraphService
         });
     }
     
+    public void OnNodePositionUpdated(object? sender, JsService.OnPositionUpdatedArg arg)
+    {
+        var microtopic = _raw.Microtopics.First(m => m.Id == arg.Id);
+        var newMicrotopic = new Node(microtopic.Id, microtopic.Name, microtopic.Parent, arg.Position);
+
+        _raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        _raw.Microtopics.Add(newMicrotopic);
+        //
+        if (microtopic.Parent is null) return;
+
+        var parent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .First(t => t.Value.Id == microtopic.Parent);
+        if (parent is null)
+        {
+            parent = Unit.SpareTopics.First(t => t.Value.Id == microtopic.Parent);
+        }
+
+        parent.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        parent.Microtopics.Add(newMicrotopic);
+    }
+    
     private GraphDataRaw _raw = new()
     {
         Units = new HashSet<Node>(),
@@ -273,7 +362,8 @@ public class GraphService
                 new GraphNameJsonConverter(),
                 new GraphSourceJsonConverter(),
                 new GraphTargetJsonConverter(),
-            }
+            },
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         };
         try
         {
@@ -372,7 +462,8 @@ public class GraphService
                 new GraphNameJsonConverter(),
                 new GraphSourceJsonConverter(),
                 new GraphTargetJsonConverter(),
-            }
+            },
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         };
         
         return JsonSerializer.Serialize(_raw, jsonSerializerOptions);
@@ -433,6 +524,29 @@ public class GraphService
         var result = JsonSerializer.Serialize(graphEls);
         return result;
     }
+    
+    public async Task<NewMicrotopic?> GetTopicId(GraphId? id = null)
+    {
+        var mv = _serviceProvider.GetService<AddMicrotopicsPopups>()
+                 ?? throw new ArgumentNullException($"{nameof(AddMicrotopicsPopups)} class was not found in serice");
+
+        if (id is not null)
+        {
+            mv.SetMicrotopicId(id);
+        }
+
+        await MopupService.Instance.PushAsync(mv);
+
+        if (mv.PopupDismissedTask is null)
+        {
+            return null;
+        }
+
+        var rvalue =await mv.PopupDismissedTask;
+        Console.WriteLine(rvalue);
+
+        return rvalue;
+    }
 
     private HashSet<string> _spareColors => new HashSet<string>()
     {
@@ -477,21 +591,4 @@ public class GraphService
         "#d51589",
         "#33333c",
     };
-    
-    public async Task<NewMicrotopic?> GetTopicId()
-    {
-        var mv = _serviceProvider.GetService<AddMicrotopicsPopups>()
-                 ?? throw new ArgumentNullException($"{nameof(AddMicrotopicsPopups)} class was not found in serice");
-        await MopupService.Instance.PushAsync(mv);
-
-        if (mv.PopupDismissedTask is null)
-        {
-            return null;
-        }
-        
-        var rvalue =await mv.PopupDismissedTask;
-        Console.WriteLine(rvalue);
-        
-        return rvalue;
-    }
 }
