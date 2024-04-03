@@ -49,6 +49,7 @@ window.addMicrotopic = (id: string, name: string, parentName: string, color: str
 
         window.cy.$(`#${id}`).on('dbltap', nodeDbTap);
         window.cy.$(`#${id}`).on('mouseover', nodeMouseOver);
+        window.cy.$(`#${id}`).on('position', nodePositionChange)
     })
 }
 window.updateMicrotopic = (id: string, name: string, parentName: string, color: string) => {
@@ -165,11 +166,29 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
         ]
     });
 
+    // window.cy.forceRender()
+    if(parsedData.some(el => !!el.position))
+    {
+        parsedData = JSON.parse(data)
+        parsedData.forEach(el => {
+            if(el.position?.x !== null && el.position?.x !== void 0 && el.position?.y !== null && el.position?.y !== void 0)
+            {
+                console.log(el.position)
+                window.cy.$(`#${el.data.id}`)
+                    .position({
+                        x: el.position!.x,
+                        y: el.position!.y,
+                    })
+            }
+        })
+    }
+
     window.cy.edges().on('dbltap', edgeDbTap)
     window.cy.on('tap', bgTap);
 
     window.cy.nodes().on('dbltap', nodeDbTap)
     window.cy.nodes().on('mouseover', nodeMouseOver)
+    window.cy.nodes().on('position', nodePositionChange)
 
     window.cy.cxtmenu({
         selector: 'core',
@@ -202,23 +221,6 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
             },
         ]
     })
-
-    // window.cy.forceRender()
-    if(parsedData.some(el => !!el.position))
-    {
-        parsedData = JSON.parse(data)
-        parsedData.forEach(el => {
-            if(el.position?.x !== null && el.position?.x !== void 0 && el.position?.y !== null && el.position?.y !== void 0)
-            {
-                console.log(el.position)
-                window.cy.$(`#${el.data.id}`)
-                    .position({
-                        x: el.position!.x,
-                        y: el.position!.y,
-                    })
-            }
-        })
-    }
     
     return window.cy;
 }
@@ -257,6 +259,13 @@ async function nodeMouseOver(e: cytoscape.EventObject) {
     window.cy?.on('pan zoom resize', update);
 }
 
+async function nodePositionChange(e: cytoscape.EventObject) {
+    const node: cytoscape.NodeSingular = e.target;
+    const id = node.data('id');
+    const position = node.position();
+    //@ts-ignore
+    window.dotnet.invokeMethodAsync('UpdateNodePositionById', id, position.x, position.y);
+}
 function bgTap(e: cytoscape.EventObject){
     console.dir(e.target)
     if( e.target !== window.cy ) return;
