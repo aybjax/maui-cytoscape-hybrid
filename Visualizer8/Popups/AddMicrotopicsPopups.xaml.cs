@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Mopups.Pages;
+﻿using Mopups.Pages;
 using Visualizer8.Models.GraphDataPrimitives;
 using Visualizer8.Models.Input;
 using Visualizer8.ViewModel;

@@ -4,16 +4,15 @@ import cxtmenu from 'cytoscape-cxtmenu';
 import cytoscapePopper from 'cytoscape-popper';
 import { createPopper } from '@popperjs/core';
 import * as _ from 'lodash';
+
 interface Dotnet {
-    invokeMethodAsync(fnx: 'AddMicrotopic'|
-                          'UpdateMicrotopicById'|
-                          'DeleteMicrotopicById'|
-                          'AddEdgeBySourceTarget'|
-                          'DeleteEdgeById',
-                      ...params: string[]): Promise<any>;
-    invokeMethodAsync(fnx: 'UpdateNodePositionById'|'InitiateNodePositionById', id: string, x: number, y: number): Promise<any>;
+    invokeMethodAsync(fnx: 'AddEdgeBySourceTarget', sourceId: string, targetId: string): Promise<void>;
+    invokeMethodAsync(fnx: 'UpdateMicrotopicById'|'DeleteMicrotopicById'|'DeleteEdgeById', id: string): Promise<void>;
+    invokeMethodAsync(fnx: 'AddMicrotopic'): Promise<void>;
+    invokeMethodAsync(fnx: 'UpdateNodePositionById'|'InitiateNodePositionById', id: string, x: number, y: number): Promise<void>;
     dispose():void;
 }
+
 declare global {
     interface Window {
         createCytoscape: (a: string)=>Promise<cytoscape.Core>;

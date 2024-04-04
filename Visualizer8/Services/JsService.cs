@@ -5,7 +5,7 @@ using Visualizer8.Models.GraphDataPrimitives;
 
 namespace Visualizer8.Services;
 
-public class JsService
+public partial class JsService
 {
     private readonly GraphService _graphService;
 
@@ -82,40 +82,5 @@ public class JsService
             Id = id,
             Position = new (x, y),
         });
-    }
-    
-    //
-    
-    public event AsyncEventHandler<OnMicrotopicAdditionArg>? OnMicrotopicAdditionRequestedEvent;
-    public event AsyncEventHandler<OnMicrotopicUpdatedArg>? OnMicrotopicUpdateRequestedEvent;
-    public event EventHandler<OnMicrotopicDeletionArg>? OnMicrotopicDeletionRequestedEvent;
-    public event EventHandler<OnEdgeAdditionArg>? OnEdgeAdditionRequestedEvent;
-    public event EventHandler<OnEdgeDeletionArg>? OnEdgeDeletionRequestedEvent;
-    public event EventHandler<OnPositionUpdatedArg>? OnNodePositionUpdatedEvent;
-    public event EventHandler<OnPositionUpdatedArg>? OnNodePositionInitiatedEvent;
-    //
-    public class OnMicrotopicAdditionArg: EventArgs{}
-
-    public class OnMicrotopicUpdatedArg : EventArgs
-    {
-        public required GraphId Id { get; init; }
-    }
-    public class OnMicrotopicDeletionArg: EventArgs
-    {
-        public required GraphId Id { get; init; }
-    }
-    public class OnEdgeAdditionArg: EventArgs
-    {
-        public required GraphSource SourceId { get; init; }
-        public required GraphTarget TargetId { get; init; }
-    }
-    public class OnEdgeDeletionArg: EventArgs
-    {
-        public required GraphId Id { get; init; }
-    }
-    public class OnPositionUpdatedArg: EventArgs
-    {
-        public required GraphId Id { get; init; }
-        public required Position Position {get; init; }
     }
 }

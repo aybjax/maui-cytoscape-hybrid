@@ -59,17 +59,17 @@ public partial class AddMicrotopicPopupModelView: ObservableObject
     {
         _graphService = graphService;
 
-        var selectedUnit = _graphService.Unit.UnitTree.First(); 
-        Units = new(_graphService.Unit.UnitTree.Select(u => new ComboItem(u.Value.Id, u.Value.Name, null)));
-        SelectedUnit = new ComboItem(selectedUnit.Value.Id, selectedUnit.Value.Name, null);
+        var selectedUnit = _graphService.Raw.Units.First(); 
+        Units = new(_graphService.Raw.Units.Select(u => new ComboItem(u.Id, u.Name, null)));
+        SelectedUnit = new ComboItem(selectedUnit.Id, selectedUnit.Name, null);
     }
 
     partial void OnSelectedUnitChanged(ComboItem? value)
     {
         if (value is null) return;
-        var unit = _graphService.Unit.UnitTree.First(u => u.Value.Id == value.Id);
+        var unit = _graphService.Raw.Units.First(u => u.Id == value.Id);
         // if (unit is null) return;
-        var topics = unit.Topics.Select(t => new ComboItem(t.Value.Id, t.Value.Name, null));
+        var topics = _graphService.Raw.Topics.Select(t => new ComboItem(t.Id, t.Name, null));
         Topics.Clear();
         foreach (var topic in topics)
         {
