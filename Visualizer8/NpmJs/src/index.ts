@@ -3,14 +3,15 @@ import dagre from 'cytoscape-dagre';
 import cxtmenu from 'cytoscape-cxtmenu';
 import cytoscapePopper from 'cytoscape-popper';
 import { createPopper } from '@popperjs/core';
+import * as _ from 'lodash';
 interface Dotnet {
     invokeMethodAsync(fnx: 'AddMicrotopic'|
                           'UpdateMicrotopicById'|
                           'DeleteMicrotopicById'|
                           'AddEdgeBySourceTarget'|
-                          'DeleteEdgeById'|
-                          'UpdateNodePositionById',
+                          'DeleteEdgeById',
                       ...params: string[]): Promise<any>;
+    invokeMethodAsync(fnx: 'UpdateNodePositionById'|'InitiateNodePositionById', id: string, x: number, y: number): Promise<any>;
     dispose():void;
 }
 declare global {
@@ -21,10 +22,12 @@ declare global {
         initDotnet: (dotnet: Dotnet) => void;
         disposeDotnet: () => void;
         addMicrotopic: (id: string, name: string, parentName: string, color: string) => void;
+        addMicrotopicWithPosition: (id: string, name: string, parentName: string, color: string, x: number, y: number) => void;
         updateMicrotopic: (id: string, name: string, parentName: string, color: string) => void;
         deleteMicrotopic: (nodeId: string, edgeIds: string[]) => void;
         addEdge: (id: string, source: string, target: string) => void;
         deleteEdge: (id: string) => void;
+        updatePosition: (id: string, x: number, y: number) => void;
     }
 }
 window.initDotnet = (dotnet:  Dotnet) => {
@@ -49,8 +52,25 @@ window.addMicrotopic = (id: string, name: string, parentName: string, color: str
 
         window.cy.$(`#${id}`).on('dbltap', nodeDbTap);
         window.cy.$(`#${id}`).on('mouseover', nodeMouseOver);
-        window.cy.$(`#${id}`).on('position', nodePositionChange)
+        window.cy.$(`#${id}`).on('position', nodePositionChange);
     })
+}
+window.addMicrotopicWithPosition = (id: string, name: string, parentName: string, color: string, x: number, y: number) => {
+    window.cy.add({
+        data: {
+            id: id,
+            name: name,
+            parent_name: parentName,
+            bg:  color,
+            group: 'microtopics',
+            selectable: true,
+        },
+        position: {x, y},
+    } as NodeDefinition);
+
+    window.cy.$(`#${id}`).on('dbltap', nodeDbTap);
+    window.cy.$(`#${id}`).on('mouseover', nodeMouseOver);
+    window.cy.$(`#${id}`).on('position', nodePositionChange)
 }
 window.updateMicrotopic = (id: string, name: string, parentName: string, color: string) => {
     window.cy.$(`#${id}`)
@@ -80,6 +100,15 @@ window.deleteEdge = (id: string) => {
     console.dir(id)
     console.log(JSON.stringify(id))
     window.cy?.$(`#${id}`).remove();
+}
+
+window.updatePosition = (id: string, x: number, y: number) => {
+    window.cy.$(`#${id}`).off('position');
+    window.cy?.$(`#${id}`).position({
+        x,
+        y,
+    });
+    window.cy.$(`#${id}`).on('position', nodePositionChange);
 }
 
 let nodeFirst: cytoscape.NodeDataDefinition |undefined;
@@ -165,10 +194,14 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
             }
         ]
     });
+    
+    window.cy.forceRender();
 
+    debugger
     // window.cy.forceRender()
     if(parsedData.some(el => !!el.position))
     {
+        debugger
         parsedData = JSON.parse(data)
         parsedData.forEach(el => {
             if(el.position?.x !== null && el.position?.x !== void 0 && el.position?.y !== null && el.position?.y !== void 0)
@@ -182,6 +215,11 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
             }
         })
     }
+    
+    window.cy.nodes().forEach(node => {
+        const position = node.position();
+        window.dotnet.invokeMethodAsync('InitiateNodePositionById', node.data('id'), position.x, position.y)
+    })
 
     window.cy.edges().on('dbltap', edgeDbTap)
     window.cy.on('tap', bgTap);
@@ -259,13 +297,25 @@ async function nodeMouseOver(e: cytoscape.EventObject) {
     window.cy?.on('pan zoom resize', update);
 }
 
+function invokeUpdatePosition(id: string, x: number, y: number) {
+    window.dotnet.invokeMethodAsync('UpdateNodePositionById', id, x, y);
+}
+
+const debouncedFunctions: {[key: string]:  _.DebouncedFunc<(id: string, x: number, y: number) => void>} = {}
 async function nodePositionChange(e: cytoscape.EventObject) {
     const node: cytoscape.NodeSingular = e.target;
     const id = node.data('id');
     const position = node.position();
-    //@ts-ignore
-    window.dotnet.invokeMethodAsync('UpdateNodePositionById', id, position.x, position.y);
+
+    const prev = debouncedFunctions[id];
+    if(prev) {
+        prev.cancel();
+    }
+
+    debouncedFunctions[id] = _.debounce(invokeUpdatePosition, 600);
+    debouncedFunctions[id](id, position.x, position.y);
 }
+
 function bgTap(e: cytoscape.EventObject){
     console.dir(e.target)
     if( e.target !== window.cy ) return;

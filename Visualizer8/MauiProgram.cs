@@ -31,6 +31,7 @@ public static class MauiProgram
         
         //
         builder.Services.AddSingleton<GraphService>();
+        builder.Services.AddSingleton<UndoService>();
         builder.Services.AddTransient<JsService>();
         builder.Services.AddSingleton<IFileSaver>(FileSaver.Default);
 

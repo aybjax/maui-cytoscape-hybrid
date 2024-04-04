@@ -38,8 +38,8 @@ public sealed record Edge(
 public sealed record Node(
     GraphId Id,
     GraphName Name,
-    GraphId? Parent = null,
-    Position? Position = null
+    GraphId? Parent,
+    Position? Position
 ) : GraphElement
 {
     public override GraphType GetType()

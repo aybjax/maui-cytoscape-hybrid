@@ -4,6 +4,7 @@
 @inject IServiceProvider di
 @using Visualizer8.Services
 @using Visualizer8.Models.GraphDataPrimitives
+@using Visualizer8.Models.GraphData
 @implements IDisposable
 
 <div id="graph"></div>
@@ -17,10 +18,13 @@
         
         _graphSvc.OnDataInitialized += OnGraph_OnDataInitializedListener;
         _graphSvc.OnMicrotopicAdditionEvaluatedEvent += OnMicrotopicAdditionEvaluated;
+        _graphSvc.OnMicrotopicWithPositionAdditionEvaluatedEvent += OnMicrotopicWithPositionAdditionEvaluated;
         _graphSvc.OnMicrotopicUpdateEvaluatedEvent += OnMicrotopicUpdateEvaluated;
         _graphSvc.OnMicrotopicDeletionEvaluatedEvent += OnMicrotopicDeletionEvaluated;
         _graphSvc.OnEdgeAdditionEvaluatedEvent += OnEdgeAdditionEvaluated;
         _graphSvc.OnEdgeDeletionEvaluatedEvent += OnEdgeDeletionEvaluated;
+        _graphSvc.OnEdgeDeletionEvaluatedEvent += OnEdgeDeletionEvaluated;
+        _graphSvc.OnNodePositionEvaluatedEvent += OnNodePositionEvaluated;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstTime)
@@ -52,6 +56,11 @@
         await Js.InvokeVoidAsync("addMicrotopic", id.Value, name.Value, parentName.Value, color);
     }
     
+    async Task AddMicrotopicWithPosition(GraphId id, GraphName name, GraphName parentName, string color, float x, float y)
+    {
+        await Js.InvokeVoidAsync("addMicrotopicWithPosition", id.Value, name.Value, parentName.Value, color, x, y);
+    }
+    
     async Task UpdateMicrotopic(GraphId id, GraphName name, GraphName parentName, string color)
     {
         await Js.InvokeVoidAsync("updateMicrotopic", id.Value, name.Value, parentName.Value, color);
@@ -72,6 +81,11 @@
         await Js.InvokeVoidAsync("deleteEdge", id.Value);
     }
 
+    async Task UpdatePosition(GraphId id, Position position)
+    {
+        await Js.InvokeVoidAsync("updatePosition", id.Value, position.X, position.Y);
+    }
+
     async Task OnMicrotopicAdditionEvaluated(object? sender, GraphService.OnMicrotopicAdditionEvaluatedArg arg)
     {
         if (arg.Id is null || arg.Name is null || arg.Color is null)
@@ -80,6 +94,16 @@
         }
 
         await AddMicrotopic(arg.Id, arg.Name, arg.ParentName ?? "", arg.Color);
+    }
+    
+    async Task OnMicrotopicWithPositionAdditionEvaluated(object? sender, GraphService.OnMicrotopicWithPositionAdditionEvaluatedArg arg)
+    {
+        if (arg.Id is null || arg.Name is null || arg.Color is null || arg.Position is null)
+        {
+            return;
+        }
+
+        await AddMicrotopicWithPosition(arg.Id, arg.Name, arg.ParentName ?? "", arg.Color, arg.Position.X, arg.Position.Y);
     }
 
     async Task OnMicrotopicUpdateEvaluated(object? sender, GraphService.OnMicrotopicUpdateEvaluatedArg arg)
@@ -122,5 +146,15 @@
         }
 
         await DeleteEdge(arg.Id);
+    }
+
+    async Task OnNodePositionEvaluated(object? sender, GraphService.OnNodePositionEvaluatedArg arg)
+    {
+        if (arg.Id is null || arg.Position is null)
+        {
+            return;
+        }
+
+        await UpdatePosition(arg.Id, arg.Position);
     }
 }

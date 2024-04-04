@@ -18,6 +18,7 @@ public class JsService
         OnEdgeAdditionRequestedEvent += _graphService.OnEdgeAdded;
         OnEdgeDeletionRequestedEvent += _graphService.OnEdgeDeleted;
         OnNodePositionUpdatedEvent += _graphService.OnNodePositionUpdated;
+        OnNodePositionInitiatedEvent += _graphService.OnNodePositionInitiated;
     }
 
     [JSInvokable(nameof(AddMicrotopic))]
@@ -72,6 +73,16 @@ public class JsService
             Position = new (x, y),
         });
     }
+
+    [JSInvokable(nameof(InitiateNodePositionById))]
+    public void InitiateNodePositionById(string id, float x, float y)
+    {
+        OnNodePositionInitiatedEvent?.Invoke(this, new()
+        {
+            Id = id,
+            Position = new (x, y),
+        });
+    }
     
     //
     
@@ -81,6 +92,7 @@ public class JsService
     public event EventHandler<OnEdgeAdditionArg>? OnEdgeAdditionRequestedEvent;
     public event EventHandler<OnEdgeDeletionArg>? OnEdgeDeletionRequestedEvent;
     public event EventHandler<OnPositionUpdatedArg>? OnNodePositionUpdatedEvent;
+    public event EventHandler<OnPositionUpdatedArg>? OnNodePositionInitiatedEvent;
     //
     public class OnMicrotopicAdditionArg: EventArgs{}
 

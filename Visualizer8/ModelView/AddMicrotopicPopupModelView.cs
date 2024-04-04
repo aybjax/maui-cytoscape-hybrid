@@ -92,7 +92,7 @@ public partial class AddMicrotopicPopupModelView: ObservableObject
         }
 
         GraphId id = Id ?? Guid.NewGuid();
-        Microtopic = new NewMicrotopic(id, MicrotopicName, SelectedTopic.Id);
+        Microtopic = new NewMicrotopic(id, MicrotopicName, SelectedTopic.Id, null);
         MopupService.Instance.PopAsync();
     }
 }

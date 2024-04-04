@@ -16,6 +16,16 @@
                 Grid.Row="0"
                 Grid.Column="0"
         />
+        <Button Command="{Binding UndoCommand}"
+                Text="Undo"
+                Grid.Row="0"
+                Grid.Column="3"
+        />
+        <Button Command="{Binding RedoCommand}"
+                Text="Redo"
+                Grid.Row="0"
+                Grid.Column="7"
+        />
         <Button Command="{Binding PickAndSaveCommand}"
                 Text="Save"
                 Grid.Row="0"

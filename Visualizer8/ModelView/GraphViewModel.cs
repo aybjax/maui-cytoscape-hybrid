@@ -77,4 +77,18 @@ public partial class GraphModelView: ObservableObject
             // ignored
         }
     }
+
+
+    [RelayCommand]
+    public void Undo()
+    {
+        _graphService.Undo();
+    }
+
+
+    [RelayCommand]
+    public void Redo()
+    {
+        _graphService.Redo();
+    }
 }

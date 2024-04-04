@@ -12,6 +12,7 @@ namespace Visualizer8.Services;
 
 public class GraphService
 {
+    private readonly UndoService _undoService;
     Dictionary<string, string> _mcColor = new();
     private HashSet<string> _mcColorSpare = new();
 
@@ -28,6 +29,20 @@ public class GraphService
             Name = null,
             ParentName = null,
             Color = null,
+        };
+    }
+
+    public class OnMicrotopicWithPositionAdditionEvaluatedArg : OnMicrotopicAdditionEvaluatedArg
+    {
+        public required Position? Position { get; init; }
+
+        public static OnMicrotopicWithPositionAdditionEvaluatedArg Empty => new()
+        {
+            Id = null,
+            Name = null,
+            ParentName = null,
+            Color = null,
+            Position = null,
         };
     }
 
@@ -85,11 +100,24 @@ public class GraphService
         };
     }
 
+    public class OnNodePositionEvaluatedArg: EventArgs
+    {
+        public required GraphId? Id { get; init; }
+        public required Position? Position { get; init; }
+
+        public static OnNodePositionEvaluatedArg Empty => new()
+        {
+            Id = null,
+            Position = null,
+        };
+    }
+
     private readonly IServiceProvider _serviceProvider;
     
     public event EventHandler? OnDataInitialized;
 
     public event AsyncEventHandler<OnMicrotopicAdditionEvaluatedArg>? OnMicrotopicAdditionEvaluatedEvent;
+    public event AsyncEventHandler<OnMicrotopicWithPositionAdditionEvaluatedArg>? OnMicrotopicWithPositionAdditionEvaluatedEvent;
 
     public event AsyncEventHandler<OnMicrotopicUpdateEvaluatedArg>? OnMicrotopicUpdateEvaluatedEvent;
     
@@ -98,6 +126,8 @@ public class GraphService
     public event AsyncEventHandler<OnEdgeAdditionEvaluatedArg>? OnEdgeAdditionEvaluatedEvent;
     
     public event AsyncEventHandler<OnEdgeDeletionEvaluatedArg>? OnEdgeDeletionEvaluatedEvent;
+    
+    public event AsyncEventHandler<OnNodePositionEvaluatedArg>? OnNodePositionEvaluatedEvent;
 
     public async Task OnMicrotopicAdded(object? sender, JsService.OnMicrotopicAdditionArg arg)
     {
@@ -121,7 +151,7 @@ public class GraphService
             return;
         }
 
-        var microtopic = new Node(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.ParentId);
+        var microtopic = new Node(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.ParentId, newMicrotopic.Position);
         parent.Microtopics.Add(microtopic);
         _raw.Microtopics.Add(microtopic);
         
@@ -139,6 +169,44 @@ public class GraphService
             ParentName = parent.Value.Name,
             Color = color,
         });
+        _undoService.AddUndoAction(new MicrotopicCreationUndoRedoCommand(microtopic));
+    }
+    public void OnMicrotopicDeletionUndo(object? sender, UndoService.MicrotopicDeletionUndoEventArg arg)
+    {
+        var newMicrotopic = arg.CreatingMicrotopic;
+
+        var parent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .FirstOrDefault(t => t.Value.Id == newMicrotopic.Parent);
+        
+        if (parent is null)
+        {
+            parent = Unit.SpareTopics.FirstOrDefault(t => t.Value.Id == newMicrotopic.Parent);
+        }
+
+        if (parent is null)
+        {
+            return;
+        }
+
+        var microtopic = new Node(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.Parent, newMicrotopic.Position);
+        parent.Microtopics.Add(microtopic);
+        _raw.Microtopics.Add(microtopic);
+        
+        if (!_mcColor.TryGetValue(microtopic.Parent ?? "none", out string? color))
+        {
+            color = _mcColorSpare.FirstOrDefault() ?? "#000";
+            _mcColorSpare.Remove(color);
+            _mcColor[microtopic.Parent?? "none"] = color;
+        }
+        
+        OnMicrotopicWithPositionAdditionEvaluatedEvent?.Invoke(this, new()
+        {
+            Id = microtopic.Id,
+            Name = microtopic.Name,
+            ParentName = parent.Value.Name,
+            Color = color,
+            Position = microtopic.Position,
+        }); 
     }
 
     public async Task OnMicrotopicUpdated(object? sender, JsService.OnMicrotopicUpdatedArg arg)
@@ -150,7 +218,7 @@ public class GraphService
             return;
         }
 
-        var microtopic = new Node(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.ParentId);
+        var microtopic = new Node(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.ParentId, newMicrotopic.Position);
         var oldMicrotopic = _raw.Microtopics.First(m => m.Id == newMicrotopic.Id);
         
         _raw.Microtopics.RemoveWhere(m => m.Id == newMicrotopic.Id); // TODO test
@@ -187,17 +255,72 @@ public class GraphService
             ParentName = newParent.Value.Name,
             Color = color,
         });
+        _undoService.AddUndoAction(new MicrotopicUpdateUndoCommand(microtopic, oldMicrotopic));
+    }
+    public void OnMicrotopicUpdatedUndo(object? sender, UndoService.MicrotopicUpdateUndoEventArg arg)
+    {
+        var newMicrotopic = arg.ReplacementMicrotopic;
+
+        var microtopic = new Node(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.Parent, newMicrotopic.Position);
+        var oldMicrotopic = _raw.Microtopics.First(m => m.Id == arg.DeletingId);
+        
+        _raw.Microtopics.RemoveWhere(m => m.Id == newMicrotopic.Id); // TODO test
+        _raw.Microtopics.Add(microtopic);
+
+        var oldParent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .FirstOrDefault(t => t.Value.Id == oldMicrotopic.Parent);
+        if (oldParent is null)
+        {
+            oldParent = Unit.SpareTopics.FirstOrDefault(t => t.Value.Id == oldMicrotopic.Parent);
+        }
+        oldParent?.Microtopics.RemoveWhere(m => m.Id == oldMicrotopic.Id);
+
+        var newParent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .FirstOrDefault(t => t.Value.Id == microtopic.Parent);
+        if (newParent is null)
+        {
+            newParent = Unit.SpareTopics.FirstOrDefault(t => t.Value.Id == microtopic.Parent);
+        }
+        newParent?.Microtopics.Add(microtopic);
+        
+        
+        if (!_mcColor.TryGetValue(microtopic.Parent ?? "none", out string? color))
+        {
+            color = _mcColorSpare.FirstOrDefault() ?? "#000";
+            _mcColorSpare.Remove(color);
+            _mcColor[microtopic.Parent?? "none"] = color;
+        }
+
+        OnMicrotopicUpdateEvaluatedEvent?.Invoke(this, new OnMicrotopicUpdateEvaluatedArg()
+        {
+            Id = microtopic.Id,
+            Name = microtopic.Name,
+            ParentName = newParent.Value.Name,
+            Color = color,
+        });
     }
     
     public void OnMicrotopicDeleted(object? sender, JsService.OnMicrotopicDeletionArg arg)
     {
         var edges = new List<GraphId>(Unit.Relations.Count);
+        var edgesForUndo = new List<Edge>(Unit.Relations.Count);
+        var microtopicForUndo = new List<Node>(Unit.Relations.Count);
         var topics = Unit.UnitTree.SelectMany(u => u.Topics).ToList();
         topics.AddRange(Unit.SpareTopics);
 
         foreach (var topic in topics)
         {
-            var nbr = topic.Microtopics.RemoveWhere(n => n.Id == arg.Id);
+            var nbr = topic.Microtopics.RemoveWhere(n =>
+            {
+                if (n.Id == arg.Id)
+                {
+                    microtopicForUndo.Add(n);
+                    
+                    return true;
+                }
+
+                return false;
+            });
 
             if (nbr > 0)
             {
@@ -211,6 +334,7 @@ public class GraphService
                     if (e.Source == arg.Id || e.Target == arg.Id)
                     {
                         edges.Add(e.Id);
+                        edgesForUndo.Add(e);
                         return true;
                     }
 
@@ -234,6 +358,42 @@ public class GraphService
                     EdgeIds = edges.ToArray(),
                 });
 
+                var undos = new MultipleUndoRedoCommand();
+                
+                foreach (var edge in edgesForUndo)
+                {
+                    undos.AddUndoRedoCommand(new EdgeDeletionUndoRedoCommand(edge));
+                }
+                foreach (var microtopic in microtopicForUndo)
+                {
+                    undos.AddUndoRedoCommand(new MicrotopicDeletionUndoRedoCommand(microtopic));
+                }
+                _undoService.AddUndoAction(undos);
+
+                return;
+            }
+        }
+    }
+    public void OnMicrotopicCreationUndo(object? sender, UndoService.MicrotopicCreationUndoEventArg arg)
+    {
+        var topics = Unit.UnitTree.SelectMany(u => u.Topics).ToList();
+        topics.AddRange(Unit.SpareTopics);
+
+        foreach (var topic in topics)
+        {
+            var nbr = topic.Microtopics.RemoveWhere(n => n.Id == arg.DeletingId);
+
+            if (nbr > 0)
+            {
+                if (_raw.Microtopics.RemoveWhere(n => n.Id == arg.DeletingId) == 0)
+                {
+                    throw new Exception("microtopic not deleted");
+                }
+                OnMicrotopicDeletionEvaluatedEvent?.Invoke(this, new OnMicrotopicDeletionEvaluatedArg()
+                {
+                    Id = arg.DeletingId,
+                    EdgeIds = Array.Empty<GraphId>(),
+                });
                 return;
             }
         }
@@ -286,11 +446,67 @@ public class GraphService
             SourceId = edge.Source,
             TargetId = edge.Target,
         });
+        
+        _undoService.AddUndoAction(new EdgeCreationUndoRedoCommand(edge));
+    }
+
+    public void OnEdgeDeletionUndo(object? sender, UndoService.EdgeDeletionUndoEventArg arg)
+    {
+        var source = Unit.UnitTree.SelectMany(u => u.Topics)
+            .SelectMany(t => t.Microtopics).FirstOrDefault(m => m.Id == arg.CreatingEdge.Source);
+ 
+        if (source is null)
+        {
+            return;    
+        }
+        
+        var target = Unit.UnitTree.SelectMany(u => u.Topics)
+            .SelectMany(t => t.Microtopics).FirstOrDefault(m => m.Id == arg.CreatingEdge.Target);
+        
+        if (target is null)
+        {
+            target = Unit.SpareMicrotopics.FirstOrDefault(m => m.Id == arg.CreatingEdge.Target);
+        }
+
+        if (target is null)
+        {
+            return;    
+        }
+
+        var edge = Unit.Relations.FirstOrDefault(e =>
+            (e.Source == arg.CreatingEdge.Source && e.Target == arg.CreatingEdge.Target)
+            || (e.Source == arg.CreatingEdge.Target && e.Target == arg.CreatingEdge.Source));
+
+        if (edge is not null)
+        {
+            return;
+        }
+
+        edge = arg.CreatingEdge with {};
+        Unit.Relations.Add(edge);
+        _raw.Edges.Add(edge);
+
+        OnEdgeAdditionEvaluatedEvent?.Invoke(this, new OnEdgeAdditionEvaluatedArg()
+        {
+            Id = edge.Id,
+            SourceId = edge.Source,
+            TargetId = edge.Target,
+        });
     }
     
     public void OnEdgeDeleted(object? sender, JsService.OnEdgeDeletionArg arg)
     {
-        var edgeNbr = Unit.Relations.RemoveWhere(e => e.Id == arg.Id);
+        var edgeForUndo = new List<Edge>();
+        var edgeNbr = Unit.Relations.RemoveWhere(e =>
+        {
+            if (e.Id == arg.Id)
+            {
+                edgeForUndo.Add(e);
+                return true;
+            }
+
+            return false;
+        });
 
         if (edgeNbr == 0)
         {
@@ -301,6 +517,26 @@ public class GraphService
         OnEdgeDeletionEvaluatedEvent?.Invoke(this, new OnEdgeDeletionEvaluatedArg()
         {
             Id = arg.Id,
+        });
+
+        foreach (var edge in edgeForUndo)
+        {
+            _undoService.AddUndoAction(new EdgeDeletionUndoRedoCommand(edge));
+        }
+    }
+    public void OnEdgeCreationUndo(object? sender, UndoService.EdgeCreationUndoEventArg arg)
+    {
+        var edgeNbr = Unit.Relations.RemoveWhere(e => e.Id == arg.DeletingId);
+
+        if (edgeNbr == 0)
+        {
+            return;
+        }
+        _raw.Edges.RemoveWhere(e =>e.Id == arg.DeletingId);
+        
+        OnEdgeDeletionEvaluatedEvent?.Invoke(this, new OnEdgeDeletionEvaluatedArg()
+        {
+            Id = arg.DeletingId,
         });
     }
     
@@ -323,6 +559,59 @@ public class GraphService
 
         parent.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
         parent.Microtopics.Add(newMicrotopic);
+        
+        _undoService.AddUndoAction(new PositionUpdateUndoCommand(microtopic.Id, arg.Position, microtopic.Position ?? new Position(0, 0)));
+    }
+    
+    public void OnNodePositionInitiated(object? sender, JsService.OnPositionUpdatedArg arg)
+    {
+        var microtopic = _raw.Microtopics.First(m => m.Id == arg.Id);
+        var newMicrotopic = new Node(microtopic.Id, microtopic.Name, microtopic.Parent, arg.Position);
+
+        _raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        _raw.Microtopics.Add(newMicrotopic);
+        //
+        if (microtopic.Parent is null) return;
+
+        var parent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .First(t => t.Value.Id == microtopic.Parent);
+        if (parent is null)
+        {
+            parent = Unit.SpareTopics.First(t => t.Value.Id == microtopic.Parent);
+        }
+
+        parent.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        parent.Microtopics.Add(newMicrotopic);
+    }
+    
+    public void OnNodePositionUpdateUndo(object? sender, UndoService.PositionUpdateUndoEventArg arg)
+    {
+        var microtopic = _raw.Microtopics.First(m => m.Id == arg.MicrotopicId);
+        var newMicrotopic = microtopic with
+        {
+            Position = arg.Position,
+        };
+
+        _raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        _raw.Microtopics.Add(newMicrotopic);
+        //
+        if (microtopic.Parent is null) return;
+
+        var parent = Unit.UnitTree.SelectMany(u => u.Topics)
+            .First(t => t.Value.Id == microtopic.Parent);
+        if (parent is null)
+        {
+            parent = Unit.SpareTopics.First(t => t.Value.Id == microtopic.Parent);
+        }
+
+        parent.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        parent.Microtopics.Add(newMicrotopic);
+
+        OnNodePositionEvaluatedEvent?.Invoke(this, new()
+        {
+            Id = newMicrotopic.Id,
+            Position = newMicrotopic.Position,
+        });
     }
     
     private GraphDataRaw _raw = new()
@@ -340,9 +629,17 @@ public class GraphService
         Relations = new HashSet<Edge>()
     };
 
-    public GraphService(IServiceProvider serviceProvider)
+    public GraphService(IServiceProvider serviceProvider, UndoService undoService)
     {
         _serviceProvider = serviceProvider;
+        _undoService = undoService;
+        
+        UndoService.MicrotopicCreationUndoEvent += OnMicrotopicCreationUndo;
+        UndoService.MicrotopicDeletionUndoEvent += OnMicrotopicDeletionUndo;
+        UndoService.EdgeCreationUndoEvent += OnEdgeCreationUndo;
+        UndoService.EdgeDeletionUndoEvent += OnEdgeDeletionUndo;
+        UndoService.MicrotopicUpdateUndoEvent += OnMicrotopicUpdatedUndo;
+        UndoService.PositionUpdateUndoEvent += OnNodePositionUpdateUndo;
     }
 
     public GraphDataRaw Raw => _raw;
@@ -352,6 +649,7 @@ public class GraphService
     {
         _mcColorSpare = _spareColors.Select(e => e).ToHashSet();
         _mcColor = new();
+        _undoService.Clear();
         
         var jsonSerializerOptions = new JsonSerializerOptions()
         {
@@ -593,4 +891,14 @@ public class GraphService
         "#d51589",
         "#33333c",
     };
+
+    public void Undo()
+    {
+        _undoService.Undo();
+    }
+
+    public void Redo()
+    {
+        _undoService.Redo();
+    }
 }
