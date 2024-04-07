@@ -1,8 +1,9 @@
 ﻿using Visualizer8.Models.GraphData;
+using Visualizer8.Services.UndoServiceBase.Type;
 
 namespace Visualizer8.Services.UndoServiceBase;
 
-public sealed class EdgeCreationUndoRedoCommand(Edge createdEdge) : IUndoRedoCommand
+public sealed class EdgeCreationUndoRedoCommand(Edge createdEdge, EdgeType edgeType) : IUndoRedoCommand
 {
     public void Execute()
     {
@@ -14,6 +15,6 @@ public sealed class EdgeCreationUndoRedoCommand(Edge createdEdge) : IUndoRedoCom
 
     public IUndoRedoCommand GetRedoCommand()
     {
-        return new EdgeDeletionUndoRedoCommand(createdEdge);
+        return new EdgeDeletionUndoRedoCommand(createdEdge, edgeType);
     }
 }

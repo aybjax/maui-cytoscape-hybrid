@@ -22,6 +22,10 @@ public partial class GraphService
     
     public event AsyncEventHandler<OnNodePositionEvaluatedArg>? OnNodePositionEvaluatedEvent;
     
+    public event AsyncEventHandler<OnUnitAdditionEvaluatedArg>? OnUnitAdditionEvaluatedEvent;
+    
+    public event AsyncEventHandler<OnUnitDeletionEvaluatedArg>? OnUnitDeletionEvaluatedEvent;
+    
     public class OnMicrotopicAdditionEvaluatedArg: EventArgs
     {
         public required GraphId? Id { get; init; }
@@ -115,6 +119,32 @@ public partial class GraphService
         {
             Id = null,
             Position = null,
+        };
+    }
+
+    public class OnUnitAdditionEvaluatedArg : EventArgs
+    {
+        public required GraphId? UnitId { get; init; }
+        public required GraphName? UnitName { get; init; }
+        
+        public required GraphId[]? MicrotopicIds { get; init; }
+
+        public static OnUnitAdditionEvaluatedArg Empty => new()
+        {
+            UnitId = null,
+            UnitName = null,
+            MicrotopicIds = null,
+        };
+    }
+    
+    public class OnUnitDeletionEvaluatedArg: EventArgs
+    {
+        public required GraphId? UnitId { get; init; }
+        public required GraphId[]? MicrotopicIds { get; init; }
+        public static OnUnitDeletionEvaluatedArg Empty => new()
+        {
+            UnitId = null,
+            MicrotopicIds = null,
         };
     }
 }

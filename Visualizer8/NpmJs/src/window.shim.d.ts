@@ -11,6 +11,8 @@ declare global {
         dotnet: Dotnet;
         initDotnet: (dotnet: Dotnet) => void;
         disposeDotnet: () => void;
+        addUnit: (unitId: string, unitName: string, microtopicIds: string[]) => void;
+        deleteUnit: (unitId: string, microtopicIds: string[]) => void,
         addMicrotopic: (id: string, name: string, parentName: string, color: string) => void;
         addMicrotopicWithPosition: (id: string, name: string, parentName: string, color: string, x: number, y: number) => void;
         updateMicrotopic: (id: string, name: string, parentName: string, color: string) => void;

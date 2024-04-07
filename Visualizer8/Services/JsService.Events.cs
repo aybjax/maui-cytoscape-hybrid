@@ -13,7 +13,17 @@ public partial class JsService
     public event EventHandler<OnEdgeDeletionArg>? OnEdgeDeletionRequestedEvent;
     public event EventHandler<OnPositionUpdatedArg>? OnNodePositionUpdatedEvent;
     public event EventHandler<OnPositionUpdatedArg>? OnNodePositionInitiatedEvent;
+    public event EventHandler<AddUnitRequestedArg>? AddUnitRequestedEvent;
+    public event EventHandler<DeleteUnitRequestedArg>? DeleteUnitRequestedEvent;
     //
+    public class AddUnitRequestedArg : EventArgs
+    {
+        public required GraphId MicrotopicId { get; init; }
+    }
+    public class DeleteUnitRequestedArg : EventArgs
+    {
+        public required GraphId UnitId { get; init; }
+    }
     public class OnMicrotopicAdditionArg: EventArgs{}
 
     public class OnMicrotopicUpdatedArg : EventArgs

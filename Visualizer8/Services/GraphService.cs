@@ -18,17 +18,11 @@ public partial class GraphService
     private readonly IServiceProvider _serviceProvider;
     private GraphDataRaw _raw = new()
     {
-        Units = new HashSet<Node>(),
-        Topics = new HashSet<Node>(),
-        Microtopics = new HashSet<Node>(),
-        Edges = new HashSet<Edge>()
-    };
-    private Graph _unit = new()
-    {
-        UnitTree = new HashSet<Unit>(),
-        SpareTopics = new HashSet<Topic>(),
-        SpareMicrotopics = new HashSet<Node>(),
-        Relations = new HashSet<Edge>()
+        Units = new (),
+        Topics = new (),
+        Microtopics = new (),
+        Edges = new (),
+        UnitEdges = new (),
     };
     public GraphDataRaw Raw => _raw;
     // public Graph Unit => _unit;
@@ -67,6 +61,7 @@ public partial class GraphService
         {
             GraphDataRaw raw = JsonSerializer.Deserialize<GraphDataRaw>(data, jsonSerializerOptions)!;
             raw.Edges = raw.Edges.Select(e => e with { Id = Guid.NewGuid() }).ToHashSet();
+            raw.UnitEdges = raw.UnitEdges.Select(e => e with { Id = Guid.NewGuid() }).ToHashSet();
             // ?? throw new Exception("could not deserialize data");
             var microtopicDict = raw.Microtopics.GroupBy(m =>
             {
@@ -112,38 +107,24 @@ public partial class GraphService
                     Topics = new(),
                 };
             }).ToHashSet();
-
-            Graph uwo = new Graph()
-            {
-                UnitTree = unitSet,
-                SpareTopics = topicDict.SelectMany(pair => pair.Value).ToHashSet(),
-                SpareMicrotopics = microtopicDict.SelectMany(pair => pair.Value).ToHashSet(),
-                Relations = raw.Edges,
-            };
-
+            
             _raw = raw;
-            _unit = uwo;
 
             OnDataInitialized?.Invoke(this, EventArgs.Empty);
             
             return this;
         }
-        catch
+        catch(Exception e)
         {
-
+            Application.Current?.MainPage?.DisplayAlert("File load error", e.Message, "OK");
+            
             this._raw = new GraphDataRaw
             {
-                Units = new HashSet<Node>(),
-                Topics = new HashSet<Node>(),
-                Microtopics = new HashSet<Node>(),
-                Edges = new HashSet<Edge>()
-            };
-            this._unit = new Graph
-            {
-                UnitTree = new HashSet<Unit>(),
-                SpareTopics = new HashSet<Topic>(),
-                SpareMicrotopics = new HashSet<Node>(),
-                Relations = new HashSet<Edge>()
+                Units = new (),
+                Topics = new (),
+                Microtopics = new (),
+                Edges = new (),
+                UnitEdges = new(),
             };
         }
 
@@ -180,6 +161,20 @@ public partial class GraphService
             }
         };
         List<CytoscapeInput> graphEls = new();
+        graphEls.AddRange(Raw?.Units.Where(u => u.IsVisible == true).Select(u =>
+        {
+            return new CytoscapeInput()
+            {
+                Data = new CytoscapeNode()
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    TextColor = "rba(100,100,100)",
+                    BackgroundColor = "black",
+                },
+                Position = u.Position,
+            };
+        }) ?? Enumerable.Empty<CytoscapeInput>());
         graphEls.AddRange(Raw?.Microtopics.Select(m =>
         {
             if (!_mcColor.TryGetValue(m.Parent ?? "none", out string? color))
@@ -197,7 +192,7 @@ public partial class GraphService
                     Name = m.Name,
                     BackgroundColor = color,
                     TextColor = "rba(100,100,100)",
-                    Parent = m.Parent?.Value,
+                    Parent = m.ContainerId?.Value,
                     ParentName = m.Parent != null
                         ? _raw.Topics.FirstOrDefault(t => t.Id == m.Parent)?.Name.Value
                         : null,
@@ -206,6 +201,20 @@ public partial class GraphService
             };
         }) ?? Enumerable.Empty<CytoscapeInput>());
         graphEls.AddRange(Raw?.Edges.Select(e =>
+        {
+            var data = new CytoscapeEdge()
+            {
+                Id = e.Id,
+                Source = e.Source,
+                Target = e.Target,
+            };
+            return new CytoscapeInput()
+            {
+                Data = data,
+                Position = null,
+            };
+        }) ?? Enumerable.Empty<CytoscapeInput>());
+        graphEls.AddRange(Raw?.UnitEdges.Select(e =>
         {
             var data = new CytoscapeEdge()
             {

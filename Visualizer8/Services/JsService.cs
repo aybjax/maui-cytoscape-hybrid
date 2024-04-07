@@ -17,6 +17,8 @@ public partial class JsService
         OnMicrotopicDeletionRequestedEvent += _graphService.OnMicrotopicDeleted;
         OnEdgeAdditionRequestedEvent += _graphService.OnEdgeAdded;
         OnEdgeDeletionRequestedEvent += _graphService.OnEdgeDeleted;
+        AddUnitRequestedEvent += _graphService.OnUnitAdded;
+        DeleteUnitRequestedEvent += _graphService.OnUnitDeleted;
         OnNodePositionUpdatedEvent += _graphService.OnNodePositionUpdated;
         OnNodePositionInitiatedEvent += _graphService.OnNodePositionInitiated;
     }
@@ -81,6 +83,24 @@ public partial class JsService
         {
             Id = id,
             Position = new (x, y),
+        });
+    }
+
+    [JSInvokable(nameof(AddUnit))]
+    public void AddUnit(string id)
+    {
+        AddUnitRequestedEvent?.Invoke(this, new()
+        {
+            MicrotopicId = id,
+        });
+    }
+
+    [JSInvokable(nameof(DeleteUnit))]
+    public void DeleteUnit(string id)
+    {
+        DeleteUnitRequestedEvent?.Invoke(this, new()
+        {
+            UnitId = id,
         });
     }
 }

@@ -25,6 +25,8 @@
         _graphSvc.OnEdgeDeletionEvaluatedEvent += OnEdgeDeletionEvaluated;
         _graphSvc.OnEdgeDeletionEvaluatedEvent += OnEdgeDeletionEvaluated;
         _graphSvc.OnNodePositionEvaluatedEvent += OnNodePositionEvaluated;
+        _graphSvc.OnUnitAdditionEvaluatedEvent += OnUnitAdditionEvaluated;
+        _graphSvc.OnUnitDeletionEvaluatedEvent += OnUnitDeletionEvaluated;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstTime)
@@ -43,6 +45,7 @@
     {
         _graphSvc.OnDataInitialized -= OnGraph_OnDataInitializedListener;
         dotnet?.Dispose();
+        Js.InvokeVoidAsync("initDotnet", dotnet); // ? //
     }
 
     void OnGraph_OnDataInitializedListener(object? sender, EventArgs args)
@@ -84,6 +87,16 @@
     async Task UpdatePosition(GraphId id, Position position)
     {
         await Js.InvokeVoidAsync("updatePosition", id.Value, position.X, position.Y);
+    }
+
+    async Task AddUnit(GraphId unitId, GraphName unitName, GraphId[] microtopicIds)
+    {
+        await Js.InvokeVoidAsync("addUnit", unitId.Value, unitName.Value, microtopicIds.Select(graphId => graphId.Value));
+    }
+    
+    async Task DeleteUnit(GraphId unitId, GraphId[] microtopicIds)
+    {
+        await Js.InvokeVoidAsync("deleteUnit", unitId.Value, microtopicIds.Select(graphId => graphId.Value));
     }
 
     async Task OnMicrotopicAdditionEvaluated(object? sender, GraphService.OnMicrotopicAdditionEvaluatedArg arg)
@@ -156,5 +169,25 @@
         }
 
         await UpdatePosition(arg.Id, arg.Position);
+    }
+
+    async Task OnUnitAdditionEvaluated(object? sender, GraphService.OnUnitAdditionEvaluatedArg arg)
+    {
+        if (arg.UnitId is null || arg.UnitName is null || arg.MicrotopicIds is null)
+        {
+            return;
+        }
+        
+        await AddUnit(arg.UnitId, arg.UnitName, arg.MicrotopicIds);
+    }
+
+    async Task OnUnitDeletionEvaluated(object? sender, GraphService.OnUnitDeletionEvaluatedArg arg)
+    {
+        if (arg.UnitId is null || arg.MicrotopicIds is null)
+        {
+            return;
+        }
+        
+        await DeleteUnit(arg.UnitId, arg.MicrotopicIds);
     }
 }

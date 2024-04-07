@@ -1,6 +1,7 @@
 ﻿import cytoscape from "cytoscape";
 
 export async function nodeDbTap(e: cytoscape.EventObject) {
+    debugger
     if (!window.nodeFirst) {
         window.nodeFirst = e.target
         return

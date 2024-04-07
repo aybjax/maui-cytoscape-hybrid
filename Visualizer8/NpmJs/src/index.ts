@@ -43,11 +43,9 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
 
     window.cy.forceRender();
 
-    debugger
     // window.cy.forceRender()
     if(parsedData.some(el => !!el.position))
     {
-        debugger
         parsedData = JSON.parse(data)
         parsedData.forEach(el => {
             if(el.position?.x !== null && el.position?.x !== void 0 && el.position?.y !== null && el.position?.y !== void 0)
@@ -103,6 +101,19 @@ window.createCytoscape = async function createCytoscape(data: string = '[]'): Pr
                     await window.dotnet.invokeMethodAsync('UpdateMicrotopicById', node.data('id'));
                 }
             },
+            {
+                content: 'add unit',
+                select: async function(node){
+                    await window.dotnet.invokeMethodAsync('AddUnit', node.data('id'));
+                }
+            },
+            {
+                content: 'delete unit',
+                select: async function(node){
+                    debugger
+                    await window.dotnet.invokeMethodAsync('DeleteUnit', node.data('id'));
+                }
+            },
         ]
     })
 
@@ -115,6 +126,48 @@ window.initDotnet = (dotnet:  Dotnet) => {
 window.disposeDotnet = () => {
     window.dotnet?.dispose();
 }
+window.addUnit = (unitId: string, unitName: string, microtopicIds: string[]) => {
+    debugger
+    window.cy.add({
+        data: {
+            id: unitId,
+            name: `UNIT: ${unitName}`,
+            bg:  'white',
+            opacity: 0,
+            
+            // 'border-width' : 100,
+            // 'border-style' : 'solid',
+            // 'border-color' : 'black',
+            // 'border-opacity': 1,
+            // 'outline-width' : 100,
+            // 'outline-style' : 'solid',
+            // 'outline-color' : 'black',
+            // 'outline-opacity' : 1,
+            // 'outline-offset' : 0,
+            
+            group: 'nodes',
+            selectable: false,
+        },
+    } as NodeDefinition);
+
+    window.cy.$(`#${unitId}`).on('dbltap', nodeDbTap);
+    window.cy.$(`#${unitId}`).on('position', nodePositionChange);
+    
+    microtopicIds.forEach(mId => {
+        window.cy.$(`#${mId}`).move({
+            parent: unitId,
+        })
+    })
+}
+window.deleteUnit = (unitId: string, microtopicIds: string[]) => {
+    microtopicIds.forEach(mId => {
+        window.cy.$(`#${mId}`).move({
+            parent: null,
+        })
+    })
+
+    window?.cy.$(`#${unitId}`).remove();
+}
 window.addMicrotopic = (id: string, name: string, parentName: string, color: string) => {
     window.cy.one('tap', (e) => {
         window.cy.add({
@@ -123,7 +176,7 @@ window.addMicrotopic = (id: string, name: string, parentName: string, color: str
                 name: name,
                 parent_name: parentName,
                 bg:  color,
-                group: 'microtopics',
+                group: 'nodes',
                 selectable: true,
             },
             position: e.position,
@@ -141,7 +194,7 @@ window.addMicrotopicWithPosition = (id: string, name: string, parentName: string
             name: name,
             parent_name: parentName,
             bg:  color,
-            group: 'microtopics',
+            group: 'nodes',
             selectable: true,
         },
         position: {x, y},
