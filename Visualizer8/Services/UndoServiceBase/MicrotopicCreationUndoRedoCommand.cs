@@ -2,7 +2,7 @@
 
 namespace Visualizer8.Services.UndoServiceBase;
 
-public sealed class MicrotopicCreationUndoRedoCommand(Node createdMicrotopic) : IUndoRedoCommand
+public sealed class MicrotopicCreationUndoRedoCommand(MicrotopicNode createdMicrotopic) : IUndoRedoCommand
 {
 
     public void Execute()

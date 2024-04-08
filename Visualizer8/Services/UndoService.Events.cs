@@ -26,7 +26,7 @@ public partial class UndoService
 
     public sealed class MicrotopicDeletionUndoEventArg: EventArgs
     {
-        public required Node CreatingMicrotopic { get; init; }
+        public required MicrotopicNode CreatingMicrotopic { get; init; }
     }
 
     public sealed class EdgeCreationUndoEventArg: EventArgs

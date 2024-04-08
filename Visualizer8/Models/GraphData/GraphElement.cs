@@ -5,7 +5,7 @@ namespace Visualizer8.Models.GraphData;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(Edge), "edge")]
-[JsonDerivedType(typeof(Node), "node")]
+// [JsonDerivedType(typeof(Node), "node")]
 [JsonDerivedType(typeof(UnitNode), "unit")]
 [JsonDerivedType(typeof(MicrotopicNode), "microtopic")]
 public abstract record GraphElement
@@ -79,9 +79,9 @@ public sealed record MicrotopicNode(
     GraphId? ContainerId
 ) : Node(Id, Name, Parent, Position)
 {
-    [JsonPropertyName("container_id")]
+    [JsonPropertyName("container-id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public GraphId? ContainerId { get; init; } = null;
+    public GraphId? ContainerId { get; init; } = ContainerId;
 }
 
 public sealed record Position(

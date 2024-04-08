@@ -109,7 +109,10 @@ public partial class GraphService
         foreach (var m in microtopics)
         {
             mIds.Add(m.Id);
-            Raw.Microtopics.Remove(m);
+            if (!Raw.Microtopics.Remove(m))
+            {
+                throw new Exception("xuy");
+            };
             Raw.Microtopics.Add(m with { ContainerId = unit.Id });
         }
 
@@ -133,7 +136,7 @@ public partial class GraphService
         var parent = Raw.Topics.FirstOrDefault(t => t.Id == newMicrotopic.ParentId);
 
         var microtopic = new MicrotopicNode(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.ParentId, newMicrotopic.Position, null);
-        _raw.Microtopics.Add(microtopic);
+        Raw.Microtopics.Add(microtopic);
         
         if (!_mcColor.TryGetValue(microtopic.Parent ?? "none", out string? color))
         {
@@ -157,8 +160,8 @@ public partial class GraphService
 
         var parent = Raw.Topics.FirstOrDefault(t => t.Id == newMicrotopic.Parent);
 
-        var microtopic = new MicrotopicNode(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.Parent, newMicrotopic.Position, null);
-        _raw.Microtopics.Add(microtopic);
+        var microtopic = new MicrotopicNode(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.Parent, newMicrotopic.Position, newMicrotopic.ContainerId);
+        Raw.Microtopics.Add(microtopic);
         
         if (!_mcColor.TryGetValue(microtopic.Parent ?? "none", out string? color))
         {
@@ -186,11 +189,16 @@ public partial class GraphService
             return;
         }
 
-        var microtopic = new MicrotopicNode(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.ParentId, newMicrotopic.Position, null);
-        var oldMicrotopic = _raw.Microtopics.First(m => m.Id == newMicrotopic.Id);
+        var oldMicrotopic = Raw.Microtopics.First(m => m.Id == newMicrotopic.Id);
+        var microtopic = oldMicrotopic with
+        {
+            Name = newMicrotopic.Name,
+            Parent = newMicrotopic.ParentId,
+            Position = newMicrotopic.Position,
+        };
         
-        _raw.Microtopics.RemoveWhere(m => m.Id == newMicrotopic.Id); // TODO test
-        _raw.Microtopics.Add(microtopic);
+        Raw.Microtopics.RemoveWhere(m => m.Id == newMicrotopic.Id); // TODO test
+        Raw.Microtopics.Add(microtopic);
         
         var newParent = Raw.Topics.FirstOrDefault(t => t.Id == microtopic.Parent);
         
@@ -214,11 +222,16 @@ public partial class GraphService
     {
         var newMicrotopic = arg.ReplacementMicrotopic;
 
-        var microtopic = new MicrotopicNode(newMicrotopic.Id, newMicrotopic.Name, newMicrotopic.Parent, newMicrotopic.Position, null);
-        var oldMicrotopic = _raw.Microtopics.First(m => m.Id == arg.DeletingId);
+        var oldMicrotopic = Raw.Microtopics.First(m => m.Id == arg.DeletingId);
+        var microtopic = oldMicrotopic with
+        {
+            Name = newMicrotopic.Name,
+            Parent = newMicrotopic.Parent,
+            Position = newMicrotopic.Position,
+        };
         
-        _raw.Microtopics.RemoveWhere(m => m.Id == newMicrotopic.Id); // TODO test
-        _raw.Microtopics.Add(microtopic);
+        Raw.Microtopics.RemoveWhere(m => m.Id == newMicrotopic.Id); // TODO test
+        Raw.Microtopics.Add(microtopic);
 
         var newParent = Raw.Topics.FirstOrDefault(t => t.Id == microtopic.Parent);
         
@@ -241,7 +254,7 @@ public partial class GraphService
     public void OnMicrotopicDeleted(object? sender, JsService.OnMicrotopicDeletionArg arg)
     {
         var edges = new List<GraphId>(Raw.Edges.Count);
-        Node? microtopicForUndo = default;
+        MicrotopicNode? microtopicForUndo = default;
         var edgesForUndo = new List<Edge>(Raw.Edges.Count);
 
         var nbr = Raw.Microtopics.RemoveWhere(n =>
@@ -327,7 +340,7 @@ public partial class GraphService
         }
 
         edge = new Edge(Guid.NewGuid(), arg.SourceId, arg.TargetId);
-        _raw.UnitEdges.Add(edge);
+        Raw.UnitEdges.Add(edge);
 
         OnEdgeAdditionEvaluatedEvent?.Invoke(this, new OnEdgeAdditionEvaluatedArg()
         {
@@ -364,7 +377,7 @@ public partial class GraphService
         }
 
         edge = new Edge(Guid.NewGuid(), arg.SourceId, arg.TargetId);
-        _raw.Edges.Add(edge);
+        Raw.Edges.Add(edge);
 
         OnEdgeAdditionEvaluatedEvent?.Invoke(this, new OnEdgeAdditionEvaluatedArg()
         {
@@ -399,7 +412,7 @@ public partial class GraphService
         }
 
         edge = arg.CreatingEdge with {};
-        _raw.Edges.Add(edge);
+        Raw.Edges.Add(edge);
 
         OnEdgeAdditionEvaluatedEvent?.Invoke(this, new OnEdgeAdditionEvaluatedArg()
         {
@@ -412,7 +425,7 @@ public partial class GraphService
     public void OnEdgeDeleted(object? sender, JsService.OnEdgeDeletionArg arg)
     {
         Edge? edgeForUndo = default;
-        var edgeNbr = _raw.Edges.RemoveWhere(e =>
+        var edgeNbr = Raw.Edges.RemoveWhere(e =>
         {
             if (e.Id == arg.Id)
             {
@@ -440,7 +453,7 @@ public partial class GraphService
     }
     public void OnEdgeCreationUndo(object? sender, UndoService.EdgeCreationUndoEventArg arg)
     {
-        var edgeNbr = _raw.Edges.RemoveWhere(e => e.Id == arg.DeletingId);
+        var edgeNbr = Raw.Edges.RemoveWhere(e => e.Id == arg.DeletingId);
 
         if (edgeNbr == 0)
         {
@@ -455,40 +468,46 @@ public partial class GraphService
     
     public void OnNodePositionUpdated(object? sender, JsService.OnPositionUpdatedArg arg)
     {
-        var microtopic = _raw.Microtopics.FirstOrDefault(m => m.Id == arg.Id);
+        var microtopic = Raw.Microtopics.FirstOrDefault(m => m.Id == arg.Id);
         if (microtopic is null) return;
-        
-        var newMicrotopic = new MicrotopicNode(microtopic.Id, microtopic.Name, microtopic.Parent, arg.Position, null);
 
-        _raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
-        _raw.Microtopics.Add(newMicrotopic);
+        var newMicrotopic = microtopic with
+        {
+            Position = arg.Position,
+        };
+
+        Raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        Raw.Microtopics.Add(newMicrotopic);
 
         _undoService.AddUndoAction(new PositionUpdateUndoCommand(microtopic.Id, arg.Position, microtopic.Position ?? new Position(0, 0)));
     }
     
     public void OnNodePositionInitiated(object? sender, JsService.OnPositionUpdatedArg arg)
     {
-        var microtopic = _raw.Microtopics.FirstOrDefault(m => m.Id == arg.Id);
+        var microtopic = Raw.Microtopics.FirstOrDefault(m => m.Id == arg.Id);
         if (microtopic is null)
         {
             return;
         }
-        var newMicrotopic = new MicrotopicNode(microtopic.Id, microtopic.Name, microtopic.Parent, arg.Position, null);
-
-        _raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
-        _raw.Microtopics.Add(newMicrotopic);
-    }
-    
-    public void OnNodePositionUpdateUndo(object? sender, UndoService.PositionUpdateUndoEventArg arg)
-    {
-        var microtopic = _raw.Microtopics.First(m => m.Id == arg.MicrotopicId);
         var newMicrotopic = microtopic with
         {
             Position = arg.Position,
         };
 
-        _raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
-        _raw.Microtopics.Add(newMicrotopic);
+        Raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        Raw.Microtopics.Add(newMicrotopic);
+    }
+    
+    public void OnNodePositionUpdateUndo(object? sender, UndoService.PositionUpdateUndoEventArg arg)
+    {
+        var microtopic = Raw.Microtopics.First(m => m.Id == arg.MicrotopicId);
+        var newMicrotopic = microtopic with
+        {
+            Position = arg.Position,
+        };
+
+        Raw.Microtopics.RemoveWhere(m => m.Id == microtopic.Id);
+        Raw.Microtopics.Add(newMicrotopic);
 
         OnNodePositionEvaluatedEvent?.Invoke(this, new()
         {

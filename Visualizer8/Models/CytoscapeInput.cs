@@ -28,6 +28,9 @@ public sealed record CytoscapeNode : CytoscapeData
     [JsonPropertyName("parent_name")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ParentName { get; init; }
+    [JsonPropertyName("opacity")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float? Opacity { get; init; }
 }
 
 public sealed record CytoscapeEdge : CytoscapeData

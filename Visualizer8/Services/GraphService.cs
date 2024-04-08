@@ -16,7 +16,7 @@ public partial class GraphService
     Dictionary<string, string> _mcColor = new();
     private HashSet<string> _mcColorSpare = new();
     private readonly IServiceProvider _serviceProvider;
-    private GraphDataRaw _raw = new()
+    public GraphDataRaw Raw { get; set; } = new()
     {
         Units = new (),
         Topics = new (),
@@ -24,7 +24,6 @@ public partial class GraphService
         Edges = new (),
         UnitEdges = new (),
     };
-    public GraphDataRaw Raw => _raw;
     // public Graph Unit => _unit;
     public GraphService(IServiceProvider serviceProvider, UndoService undoService)
     {
@@ -108,7 +107,7 @@ public partial class GraphService
                 };
             }).ToHashSet();
             
-            _raw = raw;
+            Raw = raw;
 
             OnDataInitialized?.Invoke(this, EventArgs.Empty);
             
@@ -118,7 +117,7 @@ public partial class GraphService
         {
             Application.Current?.MainPage?.DisplayAlert("File load error", e.Message, "OK");
             
-            this._raw = new GraphDataRaw
+            this.Raw = new GraphDataRaw
             {
                 Units = new (),
                 Topics = new (),
@@ -145,7 +144,7 @@ public partial class GraphService
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         };
         
-        return JsonSerializer.Serialize(_raw, jsonSerializerOptions);
+        return JsonSerializer.Serialize(Raw, jsonSerializerOptions);
     }
     public string GetCytoscapeData()
     {
@@ -168,9 +167,10 @@ public partial class GraphService
                 Data = new CytoscapeNode()
                 {
                     Id = u.Id,
-                    Name = u.Name,
+                    Name = $"Unit: {u.Name}",
                     TextColor = "rba(100,100,100)",
-                    BackgroundColor = "black",
+                    BackgroundColor = "white",
+                    Opacity = 0,
                 },
                 Position = u.Position,
             };
@@ -194,7 +194,7 @@ public partial class GraphService
                     TextColor = "rba(100,100,100)",
                     Parent = m.ContainerId?.Value,
                     ParentName = m.Parent != null
-                        ? _raw.Topics.FirstOrDefault(t => t.Id == m.Parent)?.Name.Value
+                        ? Raw.Topics.FirstOrDefault(t => t.Id == m.Parent)?.Name.Value
                         : null,
                 },
                 Position = m.Position,
